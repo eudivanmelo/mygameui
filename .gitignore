@@ -1,0 +1,4 @@
+build/
+mygameui.egg-info/
+__pycache__/
+env/
