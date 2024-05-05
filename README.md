@@ -28,7 +28,7 @@ MyGameUI é uma biblioteca Python desenvolvida para criar interfaces de usuário
 Para instalar a biblioteca MyGameUI, você pode clonar este repositório Git ou instalá-lo usando o pip.
 
 ```bash
-pip install git+https://github.com/seu-usuario/mygameui.git
+pip install git+https://github.com/eudivanmelo/mygameui.git
 ```
 
 ## Exemplo de Uso
