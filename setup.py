@@ -7,5 +7,6 @@ setup(
     author='Eudivan de Melo e Silva Junior',
     author_email='eudivan.mjunior@gmail.com',
     packages=find_packages(),
+    package_data={'mygameui': ['imgs/*.png']},
     install_requires=['pygame'],
 )

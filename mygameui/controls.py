@@ -1,6 +1,9 @@
-from pygame import Rect, draw as pydraw, mouse, MOUSEBUTTONDOWN, MOUSEBUTTONUP, image, transform
+from pygame import Rect, draw as pydraw, mouse, transform
+from pygame import constants
 from pygame.surface import Surface
 from pygame.event import Event
+from .globals import theme, font
+from .utils import generate_surface_byrect
 
 class Control:
     """
@@ -47,6 +50,7 @@ class Control:
         self._is_clicked = False
         self._visible = True
         self._parent: Control = None
+        self._controls: list[Control] = []
 
         # Função a ser chamada quando o mouse é liberado sobre o controle
         self._on_mouse_up = None
@@ -197,6 +201,25 @@ class Control:
 
     # ========== Public Function's ============
 
+    def add_control(self, control):
+        """
+        Adiciona um controle à janela.
+
+        Args:
+            control (Control): O controle a ser adicionado à janela.
+        """
+        self._controls.append(control)
+        control.parent = self
+
+    def move_ip(self, pos_relative):
+        self.rect.move_ip(pos_relative)
+        self.__update_render_rect()
+        for control in self._controls:
+            control.__update_render_rect()
+
+    def set_surface_theme(self, theme: Surface):
+        self.__render = theme
+
     def reset(self):
         """
         Reseta o estado do controle.
@@ -207,7 +230,8 @@ class Control:
         """
         Método abstrato para desenhar o controle.
         """
-        pass
+        if self.__render:
+            screen.blit(self.__render, (self.x, self.y))
 
     def update(self, events: list[Event]):
         """
@@ -231,11 +255,11 @@ class Control:
 
         if self._is_hovered:
             for event in events:
-                if event.type == MOUSEBUTTONDOWN:
+                if event.type == constants.MOUSEBUTTONDOWN:
                     if not self._is_clicked:
                         self._is_clicked = True
                         # Adicionar funcionalidade para quando o mouse é pressionado sobre o controle
-                elif event.type == MOUSEBUTTONUP:
+                elif event.type == constants.MOUSEBUTTONUP:
                     if self._is_clicked:
                         self._is_clicked = False
                         self._call_on_mouse_up()
@@ -266,13 +290,17 @@ class Window(Control):
     """
     def __init__(self, x, y, width, height, caption = '', closable = True, movable = True):
         super().__init__(x, y, width, height)
+
         self.caption = caption
-        self.closable = closable # TODO Implementar essa funcionalidade
-        self.movable = movable # TODO Implementar essa funcionalidade
+        self.caption_color = (200, 200, 200)
+        self.closable = closable
+        self.movable = movable
 
-        self._controls: list[Control] = []
+        if self.movable:
+            self.movable_rect = Rect(x, y, width, 16)
+            self.__moving = False
 
-        self.__theme: Surface = None
+        self.set_surface_theme(theme)
 
     @property
     def closable(self):
@@ -288,30 +316,11 @@ class Window(Control):
     def closable(self, value: bool):
         self.__closable = value
         if value == True:
-            self.__close_button = Button(self._rect.x + self._rect.width - 16, self._rect.y, 16, 16)
+            self.__close_button = Button(self.width - 16, 0, 16, 16)
             self.__close_button.set_on_mouse_up(lambda: setattr(self, 'visible', False))
+            self.add_control(self.__close_button)
 
-    def set_theme(self, theme: Surface):
-        """
-        Define o tema visual da janela.
-
-        Args:
-            theme (Surface): A superfície que define o tema visual da janela.
-        """
-        self.__theme = theme
-        self.__update_render()
-
-    def set_theme_bypath(self, full_path):
-        """
-        Define o tema visual da janela carregando-o de um arquivo de imagem.
-
-        Args:
-            full_path (str): O caminho completo para o arquivo de imagem do tema visual.
-        """
-        self.__theme = image.load(full_path).convert_alpha()
-        self.__update_render()
-
-    def __update_render(self):
+    def set_surface_theme(self, theme):
         """
         Atualiza as superfícies de renderização da janela com base no tema definido.
 
@@ -322,55 +331,64 @@ class Window(Control):
 
         """
         width = self._rect.width
-        heigth = self._rect.height
+        height = self._rect.height
+        self.__render = Surface((self.width, self.height)).convert_alpha()
+        self.__render.fill((0,0,0,0))
 
         ## ===== TOP =======
         if self.movable:
             # Canto superior esquerdo
-            self.__render_left_top = self.__theme.subsurface(48, 0, 16, 16)
+            render_left_top = theme.subsurface(48, 0, 16, 16)
             # Centro superior
-            self.__render_middle_top = transform.scale(self.__theme.subsurface(64, 0, 16, 16), (width - 32, 16))
+            render_middle_top = transform.scale(theme.subsurface(64, 0, 16, 16), (width - 32, 16))
             # Canto superior direito
-            self.__render_right_top = self.__theme.subsurface(80, 0, 16, 16)
+            render_right_top = theme.subsurface(80, 0, 16, 16)
         else:
             # Canto superior esquerdo
-            self.__render_left_top = self.__theme.subsurface(0, 0, 16, 16)
+            render_left_top = theme.subsurface(0, 0, 16, 16)
             # Centro superior
-            self.__render_middle_top = transform.scale(self.__theme.subsurface(16, 0, 16, 16), (width - 32, 16))
+            render_middle_top = transform.scale(theme.subsurface(16, 0, 16, 16), (width - 32, 16))
             # Canto superior direito
-            self.__render_right_top = self.__theme.subsurface(32, 0, 16, 16)
+            render_right_top = theme.subsurface(32, 0, 16, 16)
 
+        self.__render.blit(render_left_top, (0, 0))
+        self.__render.blit(render_middle_top, (16, 0))
+        self.__render.blit(render_right_top, (width - 16, 0))
+        
         ## ===== MIDDLE =======
         # Canto meio esquerdo
-        self.__render_left_middle = transform.scale(self.__theme.subsurface(0, 16, 16, 16), (16, heigth - 32))
+        render_left_middle = transform.scale(theme.subsurface(0, 16, 16, 16), (16, height - 32))
+        self.__render.blit(render_left_middle, (0, 16))
+        
         # Centro meio
-        self.__render_middle_middle = transform.scale(self.__theme.subsurface(16, 16, 16, 16), (width - 32, heigth - 32))
+        self.__render_middle_middle = transform.scale(theme.subsurface(16, 16, 16, 16), (width - 32, height - 32))
+        self.__render.blit(self.__render_middle_middle, (16, 16))
+            
         # Canto meio direito
-        self.__render_right_middle = transform.scale(self.__theme.subsurface(32, 16, 16, 16), (16, heigth - 32))
+        self.__render_right_middle = transform.scale(theme.subsurface(32, 16, 16, 16), (16, height - 32))
+        self.__render.blit(self.__render_right_middle, (width - 16, 16))
 
         ## ===== BOTTOM =======
         # Canto inferior esquerdo
-        self.__render_left_bottom = self.__theme.subsurface(0, 32, 16, 16)
+        render_left_bottom = theme.subsurface(0, 32, 16, 16)
+        self.__render.blit(render_left_bottom, (0, height - 16))
+            
         # Centro inferior
-        self.__render_middle_bottom = transform.scale(self.__theme.subsurface(16, 32, 16, 16), (width - 32, 16))
+        render_middle_bottom = transform.scale(theme.subsurface(16, 32, 16, 16), (width - 32, 16))
+        self.__render.blit(render_middle_bottom, (16, height - 16))
+            
         # Canto inferior direito
-        self.__render_right_bottom = self.__theme.subsurface(32, 32, 16, 16)
+        render_right_bottom = theme.subsurface(32, 32, 16, 16)
+        self.__render.blit(render_right_bottom, (width - 16, height - 16))
 
         # Configurar botão de fechar
         if self.closable and self.__close_button:
-            self.__close_button.normal_img = self.__theme.subsurface(96, 0, 16, 16)
-            self.__close_button.click_img = self.__theme.subsurface(96, 0, 16, 16)
-            self.__close_button.hover_img = self.__theme.subsurface(112, 0, 16, 16)
+            self.__close_button.normal_img = theme.subsurface(96, 0, 16, 16)
+            self.__close_button.click_img = theme.subsurface(96, 0, 16, 16)
+            self.__close_button.hover_img = theme.subsurface(112, 0, 16, 16)
 
-    def add_control(self, control: Control):
-        """
-        Adiciona um controle à janela.
-
-        Args:
-            control (Control): O controle a ser adicionado à janela.
-        """
-        self._controls.append(control)
-        control.parent = self
+    def set_surface_image(self, image: Surface):
+        self.__render = image
 
     def draw(self, screen):
         if not self.visible:
@@ -379,22 +397,12 @@ class Window(Control):
         x = self._rect.x
         y = self._rect.y
         
-        if self.__theme:
-            ## ===== TOP =======
-            screen.blit(self.__render_left_top, (x, y))
-            screen.blit(self.__render_middle_top, (x + 16, y))
-            screen.blit(self.__render_right_top, (x + (self._rect.width - 16), y))
-            ## ===== MIDDLE =======
-            screen.blit(self.__render_left_middle, (x, y + 16))
-            screen.blit(self.__render_middle_middle, (x + 16, y + 16))
-            screen.blit(self.__render_right_middle, (x + (self._rect.width - 16), y + 16))
-            ## ===== MIDDLE =======
-            screen.blit(self.__render_left_bottom, (x, y + (self._rect.height - 16)))
-            screen.blit(self.__render_middle_bottom, (x + 16, y + (self._rect.height - 16)))
-            screen.blit(self.__render_right_bottom, (x + (self._rect.width - 16), y + (self._rect.height - 16)))
+        if self.__render:
+            screen.blit(self.__render, (x, y))
 
-        if self.closable and self.__close_button:
-            self.__close_button.draw(screen)
+        # Desenhar o texto
+        if len(self.caption) > 0:
+            screen.blit(font.render(self.caption, True, self.caption_color), (x + 8, y + 3))
 
         # Render controls in order
         for control in self._controls:
@@ -404,8 +412,17 @@ class Window(Control):
         if not self.visible:
             return # Não atualizar controle caso ele não esteja visível
         
-        if self.closable and self.__close_button:
-            self.__close_button.update(events)
+        if self.movable:
+            for event in events:
+                if event.type == constants.MOUSEBUTTONDOWN and event.button == 1:
+                    if self.movable_rect.collidepoint(mouse.get_pos()):
+                        self.__moving = True
+                elif event.type == constants.MOUSEBUTTONUP:
+                    self.__moving = False
+                elif event.type == constants.MOUSEMOTION:
+                    if self.__moving:
+                        self.move_ip(event.rel)
+                        self.movable_rect.move_ip(event.rel)
 
         for control in reversed(self._controls):
             control.update(events)
@@ -421,10 +438,7 @@ class Button(Control):
     Classe para criar um botão clicável.
     """
 
-    def __init__(self, x, y, width, height, text='', 
-                 normal_img=None, 
-                 hover_img=None, 
-                 click_img=None):
+    def __init__(self, x, y, width, height, text=''):
         """
         Inicializa um botão com sua posição, tamanho e imagens.
 
@@ -439,10 +453,20 @@ class Button(Control):
             click_img (Surface, optional): Imagem a ser exibida quando o botão está sendo clicado (default é None).
         """
         super().__init__(x, y, width, height)
+
         self.text = text
-        self.normal_img = normal_img
-        self.hover_img = hover_img
-        self.click_img = click_img
+        self.font = font
+        self.text_color = (255, 255, 255)
+
+        self.set_surface_theme(theme)
+
+    def set_surface_theme(self, theme: Surface):
+        self.normal_img = generate_surface_byrect(theme.subsurface(48, 16, 16, 16), 
+                                                        self.width, self.height)
+        self.hover_img = generate_surface_byrect(theme.subsurface(64, 16, 16, 16), 
+                                                        self.width, self.height)
+        self.click_img = generate_surface_byrect(theme.subsurface(80, 16, 16, 16), 
+                                                        self.width, self.height)
 
     def draw(self, screen: Surface):
         """
@@ -454,9 +478,7 @@ class Button(Control):
 
         if not self._visible:
             return # Não exibir controle caso não esteja visível
-        
-        # Definir posição com base na posição do parente
-        
+
         if self._is_hovered:
             if self._is_clicked:
                 if self.click_img:
@@ -473,3 +495,16 @@ class Button(Control):
                 screen.blit(self.normal_img, self._render_rect)
             else:
                 pydraw.rect(screen, (128, 128, 128), self._render_rect)
+
+        # Desenhar o texto
+        render = self.font.render(self.text, True, self.text_color)
+        text_x = self._render_rect.center[0] - render.get_rect().center[0]
+        if self._is_clicked:
+            text_y = self._render_rect.center[1] - render.get_rect().center[1]
+        else:
+            text_y = self._render_rect.center[1] - render.get_rect().center[1] - 1
+        screen.blit(render, (text_x, text_y))
+
+class Textbox(Control):
+    def __init__(self, x, y, width, height):
+        super().__init__(x, y, width, height)

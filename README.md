@@ -14,6 +14,8 @@ MyGameUI é uma biblioteca Python desenvolvida para criar interfaces de usuário
 
 - **Descrição**: Representa uma janela que pode conter outros controles.
 - **Funcionalidades**:
+    - Funcionalidade de fechar janela
+    - Adicionar uma imagem de tema a partir de um surface, ou caminho do arquivo
     - Adiciona e gerencia controles filhos.
 
 ### `Button`
