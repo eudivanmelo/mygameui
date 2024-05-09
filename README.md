@@ -2,6 +2,8 @@
 
 MyGameUI é uma biblioteca Python desenvolvida para criar interfaces de usuário (UI) simples em jogos 2D usando Pygame. Esta biblioteca oferece uma variedade de controles básicos, como janelas e botões, para facilitar a criação de interfaces de usuário interativas e responsivas em seus projetos.
 
+![preview](preview.jpg)
+
 ## Classes
 
 ### `Control`
