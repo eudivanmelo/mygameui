@@ -5,4 +5,4 @@ from pkg_resources import resource_filename
 init()
 theme = image.load(resource_filename('mygameui', join('imgs', 'default.png')))
 
-font = pgfont.Font(None, 14)
+font = pgfont.Font(None, 16)

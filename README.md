@@ -8,22 +8,36 @@ MyGameUI é uma biblioteca Python desenvolvida para criar interfaces de usuário
 
 - **Descrição**: Classe base para todos os controles da interface do usuário.
 - **Funcionalidades**:
-    - Controla a posição, tamanho, visibilidade e interações dos controles.
+    - Gerenciamento de posição e tamanho do controle.
+    - Capacidade de definir se o controle está visível ou não.
+    - Suporte para eventos de mouse, como clicar e mover o mouse sobre o controle.
+    - Possibilidade de adicionar controles filhos e definir um controle pai.
+    - Personalização da aparência do controle com base em um tema.
 
-### `Window`
+### `Form`
 
-- **Descrição**: Representa uma janela que pode conter outros controles.
+- **Descrição**: Representa uma janela de formulário na interface do usuário.
 - **Funcionalidades**:
-    - Funcionalidade de fechar janela
-    - Adicionar uma imagem de tema a partir de um surface, ou caminho do arquivo
-    - Adiciona e gerencia controles filhos.
+    - Define a aparência do formulário com base em um tema.
+    - Define a imagem do formulário manualmente.
+    - Desenha o formulário na tela especificada.
+    - Atualiza o formulário com base nos eventos recebidos.
 
 ### `Button`
 
-- **Descrição**: Classe para criar um botão clicável.
+- **Descrição**: Representa um botão clicável em uma interface de usuário.
 - **Funcionalidades**:
-    - Permite definir texto e imagens para diferentes estados do botão (normal, hover e clicado).
-    - Gerencia interações de clique do mouse.
+    - Define a aparência do botão com base em um tema Surface.
+    - Desenha o botão na tela especificada.
+
+### `Textbox`
+
+- **Descrição**: Representa um controle de caixa de texto que pode ser usado para entrada de texto.
+- **Funcionalidades**:
+    - Define o tema visual do textbox.
+    - Define uma função a ser chamada sempre que o texto dentro do textbox for alterado.
+    - Desenha o textbox na tela especificada.
+    - Atualiza o textbox com base nos eventos recebidos.
 
 ## Instalação
 
@@ -39,7 +53,7 @@ Aqui está um exemplo simples de como usar as classes Window e Button em um proj
 
 ```python
 import pygame
-from mygameui import Window, Button
+from mygameui import Form, Button
 
 # Inicialize o Pygame
 pygame.init()
@@ -51,7 +65,7 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Exemplo de UI")
 
 # Crie uma janela principal
-test_window = Window(100, 100, 600, 400)
+test_window = Form(100, 100, 600, 400)
 
 # Crie um botão e adicione à janela principal
 b = Button(50, 50, 100, 50, text="Clique Aqui")
