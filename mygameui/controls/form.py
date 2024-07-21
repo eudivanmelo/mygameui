@@ -56,6 +56,12 @@ class Form(Control):
             self.__close_button.set_on_mouse_up(lambda: setattr(self, 'visible', False))
             self.add_control(self.__close_button)
 
+            # Configurar botão de fechar
+            if self.closable and self.__close_button:
+                self.__close_button.normal_img = ui_globals.theme.subsurface(96, 0, 16, 16)
+                self.__close_button.click_img = ui_globals.theme.subsurface(96, 0, 16, 16)
+                self.__close_button.hover_img = ui_globals.theme.subsurface(112, 0, 16, 16)
+
     # ======== Set Function's ===========
 
     def set_surface_theme(self, theme):
@@ -116,12 +122,6 @@ class Form(Control):
         render_right_bottom = theme.subsurface(32, 32, 16, 16)
         self.__render.blit(render_right_bottom, (width - 16, height - 16))
 
-        # Configurar botão de fechar
-        if self.closable and self.__close_button:
-            self.__close_button.normal_img = theme.subsurface(96, 0, 16, 16)
-            self.__close_button.click_img = theme.subsurface(96, 0, 16, 16)
-            self.__close_button.hover_img = theme.subsurface(112, 0, 16, 16)
-
     def set_surface_image(self, image: Surface):
         """Define a imagem do formulário manualmente.
 
@@ -150,24 +150,24 @@ class Form(Control):
         for control in self._controls:
             control.draw(screen)
 
-    def update(self, events: list[Event]):
+    def update(self, event: Event):
         if not self.visible:
             return # Não atualizar controle caso ele não esteja visível
         
-        if self.movable:
-            for event in events:
-                if event.type == constants.MOUSEBUTTONDOWN and event.button == 1:
-                    if self.movable_rect.collidepoint(mouse.get_pos()):
-                        self.__moving = True
-                elif event.type == constants.MOUSEBUTTONUP:
-                    self.__moving = False
-                elif event.type == constants.MOUSEMOTION:
-                    if self.__moving:
-                        self.move_ip(event.rel)
-                        self.movable_rect.move_ip(event.rel)
+        if event.type == constants.MOUSEBUTTONDOWN and event.button == 1:
+            self._is_clicked = True
+            if self.movable and self.movable_rect.collidepoint(mouse.get_pos()):
+                self.__moving = True
+        elif event.type == constants.MOUSEBUTTONUP:
+            self._is_clicked = False
+            self.__moving = False
+        elif event.type == constants.MOUSEMOTION:
+            if self.movable and self.__moving:
+                self.move_ip(event.rel)
+                self.movable_rect.move_ip(event.rel)
 
         for control in reversed(self._controls):
-            control.update(events)
+            control.update(event)
             if control.rect.collidepoint(mouse.get_pos()):
                 for c in self._controls:
                     if c != control:

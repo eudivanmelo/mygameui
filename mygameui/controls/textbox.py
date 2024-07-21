@@ -1,5 +1,6 @@
 from pygame import Surface, constants, mouse, time
 from pygame.event import Event
+import re
 
 from .control import Control
 import mygameui.utils as ui_utils
@@ -31,6 +32,7 @@ class Textbox(Control):
         self.font = ui_globals.font
         self.font_color = (255, 255, 255)
         self.align = ('left', 8)
+        self.regex = re.compile(r'[a-zA-Z0-9\u00C0-\u024F\u1E00-\u1EFF.,;:!? ]+')
 
         self._on_changed_text = None
         self.__visible_text = ''
@@ -38,6 +40,8 @@ class Textbox(Control):
         self.__select_index = 0
         self.__last_tick = time.get_ticks()
         self.__visible_cursor = True
+        self.__text_start = 0
+        self.__text_end = 0
 
         self.text = text
         self.set_surface_theme(ui_globals.theme)
@@ -58,11 +62,9 @@ class Textbox(Control):
     def text(self, new_text):
         if self._text != new_text:
             self._text = new_text
-
-            if self.is_password:
-                self.__visible_text = '*' * len(new_text)
-            else:
-                self.__visible_text = new_text
+            
+            self.__select_index = len(new_text)
+            self.__update_visible_text()
             self._call_changed_text()
 
     @property
@@ -138,9 +140,50 @@ class Textbox(Control):
             self.__text_x = self._render_rect.x
             self.__text_y = self._render_rect.y
 
+    def num_chars_in_width(self, text):
+        num_chars = 0
+
+        for i in range(len(text)):
+            size = self.font.size(text[self.__text_start:self.__text_start + i])[0]
+            if size >= self.width - (self.align[1] * 2) - 4:
+                break
+
+            num_chars += 1
+
+        return num_chars
+
+    def __update_visible_text(self):
+        if self.is_password:
+            chars_number = self.num_chars_in_width('●' * len(self._text))
+        else:
+            chars_number = self.num_chars_in_width(self._text)
+
+        if len(self._text) <= chars_number:
+            self.__text_start = 0
+            self.__text_end = len(self._text)
+        else:
+            if self.__select_index < self.__text_start:
+                self.__text_start = self.__select_index
+                self.__text_end = self.__text_start + chars_number
+
+            if self.__select_index > self.__text_end:
+                self.__text_end = self.__select_index
+                self.__text_start = self.__text_end - chars_number
+
+        if self.is_password:
+            self.__visible_text = '●' * len(self._text[self.__text_start:self.__text_end])
+        else:
+            self.__visible_text = self._text[self.__text_start:self.__text_end]
+
     ## ========== Public Function's ===========
 
     def draw(self, screen: Surface):
+        # Verifica o tempo para piscar o cursor
+        if self._active:
+            if time.get_ticks() - self.__last_tick >= 500:
+                self.__visible_cursor = not self.__visible_cursor
+                self.__last_tick = time.get_ticks()
+                
         if self._active:
             screen.blit(self.__active_render, self._render_rect)
         else:
@@ -150,39 +193,41 @@ class Textbox(Control):
         screen.blit(render, (self.__text_x, self.__text_y))
 
         if self._active and self.__visible_cursor:
-            render = self.font.render(self.__visible_text, True, self.font_color)
-            screen.blit(self.font.render('|', True, self.font_color), 
-                        (self.__text_x + self.font.size(self.__visible_text[:self.__select_index])[0] - 1, self.__text_y))
+            cursor_x = self.__text_x + self.font.size(self.__visible_text[:self.__select_index - self.__text_start])[0] - 1
+            screen.blit(self.font.render('|', True, self.font_color), (cursor_x, self.__text_y))
 
-    def update(self, events: list[Event]):
-        super().update(events)
+    def update(self, event: Event):
+        super().update(event)
 
-        for event in events:
-            if event.type == constants.MOUSEBUTTONDOWN and self._is_hovered:
-                if event.button == 1:  # Verifica se o clique foi com o botão esquerdo
-                    click_pos = mouse.get_pos()[0] - self.__text_x
-                    self.__select_index = 0
-                    self.__visible_cursor = True
-                    for i in range(len(self.__visible_text)):
-                        size = self.font.size(self.__visible_text[:i+1])[0]
-                        if click_pos <= size:
-                            self.__select_index = i
-                            break
-                        elif click_pos > size:
-                            self.__select_index = len(self.__visible_text)
-            elif event.type == constants.KEYDOWN and self._active:
-                if event.key == constants.K_BACKSPACE:
-                    if self.__select_index > 0:
-                        self.text = self._text[:self.__select_index - 1] + self._text[self.__select_index:]
-                        self.__select_index -= 1
-                else:
-                    self.text = self._text[:self.__select_index] + event.unicode + self._text[self.__select_index:]
+        if event.type == constants.MOUSEBUTTONDOWN and self._is_hovered:
+            if event.button == 1:  # Verifica se o clique foi com o botão esquerdo
+                click_pos = mouse.get_pos()[0] - self.__text_x
+                self.__select_index = 0
+                self.__visible_cursor = True
+                for i in range(len(self.__visible_text)):
+                    size = self.font.size(self.__visible_text[:i+1])[0]
+                    if click_pos <= size:
+                        self.__select_index = self.__text_start + i
+                        break
+                    elif click_pos > size:
+                        self.__select_index = self.__text_start + len(self.__visible_text)
+        elif event.type == constants.KEYDOWN and self._active:
+            if event.key == constants.K_BACKSPACE:
+                if self.__select_index > 0:
+                    self._text = self._text[:self.__select_index - 1] + self._text[self.__select_index:]
+                    self.__select_index -= 1
+            elif event.key == constants.K_LEFT:
+                if self.__select_index > 0:
+                    self.__select_index -= 1
+            elif event.key == constants.K_RIGHT:
+                if self.__select_index < len(self._text):
                     self.__select_index += 1
-
-        # Verifica o tempo para piscar o cursor
-        if self._active:
-            if time.get_ticks() - self.__last_tick >= 500:
-                self.__visible_cursor = not self.__visible_cursor
-                self.__last_tick = time.get_ticks()
+            else:
+                # Verifique se o caractere do evento de entrada do teclado corresponde à expressão regular
+                if self.regex.match(event.unicode):
+                    self._text = self._text[:self.__select_index] + event.unicode + self._text[self.__select_index:]
+                    self.__select_index += 1
+            
+            self.__update_visible_text()
             
                         

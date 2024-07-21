@@ -64,7 +64,7 @@ class Button(Control):
             render = self.font.render(self.text, True, self.text_color)
             text_x = self._render_rect.center[0] - render.get_rect().center[0]
             if self._is_clicked:
-                text_y = self._render_rect.center[1] - render.get_rect().center[1]
+                text_y = self._render_rect.center[1] - render.get_rect().center[1] + 1
             else:
-                text_y = self._render_rect.center[1] - render.get_rect().center[1] - 1
+                text_y = self._render_rect.center[1] - render.get_rect().center[1]
             screen.blit(render, (text_x, text_y))

@@ -283,6 +283,10 @@ class Control:
         Reseta o estado do controle.
         """
         self._is_hovered = False
+        self._active = False
+
+        for control in self._controls:
+            control.reset()
 
     def draw(self, screen: Surface):
         """
@@ -291,12 +295,12 @@ class Control:
         if self.__render:
             screen.blit(self.__render, self._render_rect)
 
-    def update(self, events: list[Event]):
+    def update(self, event: Event):
         """
         Atualiza o estado do controle com base nos eventos fornecidos.
 
         Args:
-            events (list[Event]): Lista de eventos do pygame.
+            events (Event): Eventos do pygame.
         """
         if not self._visible:
             return
@@ -304,24 +308,25 @@ class Control:
         if self._render_rect.collidepoint(mouse.get_pos()):
             if not self._is_hovered:
                 self._is_hovered = True
-                # Adicionar funcionalidade para quando o mouse entra no controle
+                # TODO Mouse entered function
         else:
             if self._is_hovered:
                 self._is_hovered = False
                 self._is_clicked = False
-                # Adicionar funcionalidade para quando o mouse sai do controle
+                # TODO Mouse leave function
 
         if self._is_hovered:
-            for event in events:
-                if event.type == constants.MOUSEBUTTONDOWN:
-                    if not self._is_clicked:
-                        self._is_clicked = True
-                        self._call_on_mouse_down()
-                elif event.type == constants.MOUSEBUTTONUP:
-                    if self._is_clicked:
-                        self._is_clicked = False
-                        self._call_on_mouse_up()
+            if event.type == constants.MOUSEBUTTONDOWN:
+                if not self._is_clicked:
+                    self._is_clicked = True
+                    self._call_on_mouse_down()
+            elif event.type == constants.MOUSEBUTTONUP:
+                if self._is_clicked:
+                    self._is_clicked = False
+                    self._call_on_mouse_up()
         else:
-            for event in events:
-                if event.type == constants.MOUSEBUTTONDOWN:
-                    self.set_active(False)
+            if event.type == constants.MOUSEBUTTONDOWN:
+                self.set_active(False)
+
+        # TODO Implements tab next control
+                            
